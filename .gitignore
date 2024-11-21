@@ -6,3 +6,4 @@ src/main.d
 src/main.o
 src/Node.d
 src/Node.o
+output.json

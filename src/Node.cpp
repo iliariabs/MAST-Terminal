@@ -53,42 +53,91 @@ bool Node::isChildOf(const Node* parent) const {
     if (!parent) {
         return false;
     }
-    return (parent->left == this || parent->right == this); 
+    return (parent->left == this || parent->right == this);
 }
 
-void printNode(std::ostream& os, const Node& node, int indentLevel) {
-    std::string indent;
-    indent.append(indentLevel, ' ');
+void printNode(std::ostream& os, const Node& node, int indentLevel, std::unordered_set<const Node*>& printedNodes) {
+    std::string indent(indentLevel, ' ');
+
+    if (printedNodes.find(&node) != printedNodes.end()) {
+        os << indent << "   \n";
+        return;
+    }
+
+    printedNodes.insert(&node);
+
     if (node.type == NUMBER) {
         os << indent << "   " << node.value << "\n";
     } else if (node.type == OPERATOR) {
-        os << indent << "   " << node.op << "\n"; 
+        os << indent << "   " << node.op << "\n";
     }
-    
-    if (node.left || node.right) { 
-        os << indent << " /   \\" << "\n"; 
+
+    if (node.left || node.right) {
+        os << indent << " /   \\\n";
 
         if (node.left) {
-            os << indent << node.left->value;  
+            os << indent << node.left->value;
         } else {
-            os << indent << " ";
+            os << indent << "    ";
         }
 
         if (node.right) {
-            if (node.right->getType() == OPERATOR){
-                os << "   " << node.right->op << "\n";
-                printNode(os, *node.right, indentLevel + 3); 
-            }
-            else{
+            if (node.right->type == OPERATOR) {
+                printNode(os, *node.right, indentLevel + 3, printedNodes);
+            } else {
                 os << "   " << node.right->value << "\n";
             }
         } else {
-            os << indent << "     " << " " << "\n";
+            os <<  "    \n";
         }
     }
 }
 
 std::ostream& operator<<(std::ostream& os, const Node& node) {
-    printNode(os, node, 0); 
+    std::unordered_set<const Node*> printedNodes;
+    printNode(os, node, 0, printedNodes);
     return os;
+}
+
+std::string Node::toJson() const {
+    std::ostringstream os;
+    toJsonHelper(os);
+    return os.str();
+}
+
+
+void Node::toJsonHelper(std::ostringstream& os) const {
+    os << "{";
+    if (type == NUMBER) {
+        os << "\"value\": " << value;
+    } else if (type == OPERATOR) {
+        os << "\"operator\": \"" << op << "\"";
+    }
+
+    if (left || right) {
+        os << ", \"left\": ";
+        if (left) {
+            left->toJsonHelper(os);
+        } else {
+            os << "null";
+        }
+
+        os << ", \"right\": ";
+        if (right) {
+            right->toJsonHelper(os);
+        } else {
+            os << "null";
+        }
+    }
+
+    os << "}";
+}
+
+void Node::saveToJsonFile(const std::string& filename) const {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        throw std::ios_base::failure("Failed to open file: " + filename);
+    }
+    file << toJson();
+    file.close();
 }

@@ -10,10 +10,12 @@ int main() {
 
     opNode.setLeft(&leftChild);
     opNode.setRight(&rightChild);
-    rightChild.setLeft(&rightleftChild); 
+    rightChild.setLeft(&rightleftChild);
     rightChild.setRight(&rightrightChild);
 
-    std::cout << opNode;
+    std::cout << opNode.toJson() << std::endl;
+
+    opNode.saveToJsonFile("output.json");
 
     return 0;
 }
