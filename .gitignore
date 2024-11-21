@@ -1,0 +1,8 @@
+.vscode/launch.json
+.vscode/settings.json
+.vscode/tasks.json
+output/main
+src/main.d
+src/main.o
+src/Node.d
+src/Node.o
