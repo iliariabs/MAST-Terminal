@@ -4,12 +4,9 @@
 int main() {
      std::string expression = "2 + 10 + 52 *531";
     try {
-        Node* root = buildExpressionTree(expression);
-        root->saveToJsonFile("expression.json");
-        delete root;
-        Node* tree = buildExpressionTree("3 + 5 * 2 - 8");
+        Node* tree = buildExpressionTree("2+2*2");
         tree->saveToJsonFile("expression.json");
-        tree->renderTree("expression_tree.png");
+        tree->renderTree("output.png");
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }

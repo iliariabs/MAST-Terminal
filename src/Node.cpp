@@ -162,8 +162,14 @@ Node* buildExpressionTree(const std::string& expression) {
     return nodes.top();
 }
 
-void drawNode(std::vector<unsigned char>& image, int width, int x, int y, const std::string& label) {
+void drawNode(std::vector<unsigned char>& image, int width, int x, int y, bool isNumber) {
     int radius = 20;
+
+
+    unsigned char r = isNumber ? 0 : 255;
+    unsigned char g = isNumber ? 255 : 0;
+    unsigned char b = 0;
+
     for (int dy = -radius; dy <= radius; dy++) {
         for (int dx = -radius; dx <= radius; dx++) {
             if (dx * dx + dy * dy <= radius * radius) {
@@ -171,18 +177,19 @@ void drawNode(std::vector<unsigned char>& image, int width, int x, int y, const 
                 int py = y + dy;
                 if (px >= 0 && px < width && py >= 0 && py < width) {
                     int idx = 4 * (py * width + px);
-                    image[idx] = 0;     
-                    image[idx + 1] = 0;  
-                    image[idx + 2] = 255; 
-                    image[idx + 3] = 255; 
+                    image[idx] = r;
+                    image[idx + 1] = g;
+                    image[idx + 2] = b;
+                    image[idx + 3] = 255;
                 }
             }
         }
     }
 
-    // Render the label (actual text rendering would require more complex logic)
-    // TODO: Render text
+
+
 }
+
 
 void drawLine(std::vector<unsigned char>& image, int width, int x1, int y1, int x2, int y2) {
     int dx = abs(x2 - x1), sx = x1 < x2 ? 1 : -1;
@@ -192,7 +199,7 @@ void drawLine(std::vector<unsigned char>& image, int width, int x1, int y1, int 
     while (true) {
         if (x1 >= 0 && x1 < width && y1 >= 0 && y1 < width) {
             int idx = 4 * (y1 * width + x1);
-            image[idx] = 0;  
+            image[idx] = 0;
             image[idx + 1] = 255;
             image[idx + 2] = 0;
             image[idx + 3] = 255;
@@ -205,22 +212,36 @@ void drawLine(std::vector<unsigned char>& image, int width, int x1, int y1, int 
     }
 }
 
+int Node::getDepth() const {
+    int leftDepth = left ? left->getDepth() : 0;
+    int rightDepth = right ? right->getDepth() : 0;
+    return 1 + std::max(leftDepth, rightDepth);
+}
+
+
 void Node::renderHelper(std::vector<unsigned char>& image, int width, int x, int y, int offsetX, int offsetY) const {
-    drawNode(image, width, x, y, (type == NUMBER) ? std::to_string(value) : std::string(1, op));
+    drawNode(image, width, x, y, type == NUMBER);
 
     if (left) {
-        drawLine(image, width, x, y, x - offsetX, y + offsetY);
-        left->renderHelper(image, width, x - offsetX, y + offsetY, offsetX / 2, offsetY);
+        int newOffsetX = std::max(offsetX / 2, 20);
+        drawLine(image, width, x, y, x - newOffsetX, y + offsetY);
+        left->renderHelper(image, width, x - newOffsetX, y + offsetY, newOffsetX, offsetY);
     }
     if (right) {
-        drawLine(image, width, x, y, x + offsetX, y + offsetY);
-        right->renderHelper(image, width, x + offsetX, y + offsetY, offsetX / 2, offsetY);
+        int newOffsetX = std::max(offsetX / 2, 20);
+        drawLine(image, width, x, y, x + newOffsetX, y + offsetY);
+        right->renderHelper(image, width, x + newOffsetX, y + offsetY, newOffsetX, offsetY);
     }
 }
 
-void Node::renderTree(const std::string& filename, int width, int height) const {
+
+void Node::renderTree(const std::string& filename) const {
+    int depth = getDepth();
+    int height = depth * 150;
+    int width = min(1000, std::pow(2, depth) * 100);
+
     std::vector<unsigned char> image(width * height * 4, 255);
-    renderHelper(image, width, width / 2, 50, width / 4, 100); 
+    renderHelper(image, width, width / 2, 50, width / 4, 100);
 
     unsigned error = lodepng::encode(filename, image, width, height);
     if (error) {

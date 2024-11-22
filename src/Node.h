@@ -10,9 +10,15 @@
 #include <vector>
 #include <cctype>
 #include <stdexcept>
+#include <cmath>
 #include "libs/lodepng.h"
 
 enum NodeType { NUMBER, OPERATOR };
+
+template<typename T1, typename T2>
+auto min(T1 a, T2 b) -> decltype((a < b) ? a : b) {
+    return (a < b) ? a : b;
+}
 
 class Node {
 public:
@@ -36,16 +42,13 @@ public:
 
     bool isChildOf(const Node* parent) const;
 
-    friend void printNode(std::ostream& os, const Node& node, int indentLevel, std::unordered_set<const Node*>& printedNodes);
-
-    friend std::ostream& operator<<(std::ostream& os, const Node& node);
-
     std::string toJson() const;
     void toJsonHelper(std::ostringstream& os) const;
 
     void saveToJsonFile(const std::string& filename) const;
 
-    void renderTree(const std::string& filename, int width = 1024, int height = 768) const;
+    int getDepth() const;
+    void renderTree(const std::string& filename) const;
     void renderHelper(std::vector<unsigned char>& image, int width, int x, int y, int offsetX, int offsetY) const;
 private:
     NodeType type;
