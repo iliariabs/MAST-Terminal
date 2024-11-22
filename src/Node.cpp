@@ -56,48 +56,7 @@ bool Node::isChildOf(const Node* parent) const {
     return (parent->left == this || parent->right == this);
 }
 
-void printNode(std::ostream& os, const Node& node, int indentLevel, std::unordered_set<const Node*>& printedNodes) {
-    std::string indent(indentLevel, ' ');
 
-    if (printedNodes.find(&node) != printedNodes.end()) {
-        os << indent << "   \n";
-        return;
-    }
-
-    printedNodes.insert(&node);
-
-    if (node.type == NUMBER) {
-        os << indent << "   " << node.value << "\n";
-    } else if (node.type == OPERATOR) {
-        os << indent << "   " << node.op << "\n";
-    }
-
-    if (node.left || node.right) {
-        os << indent << " /   \\\n";
-
-        if (node.left) {
-            os << indent << node.left->value;
-        } else {
-            os << indent << "    ";
-        }
-
-        if (node.right) {
-            if (node.right->type == OPERATOR) {
-                printNode(os, *node.right, indentLevel + 3, printedNodes);
-            } else {
-                os << "   " << node.right->value << "\n";
-            }
-        } else {
-            os <<  "    \n";
-        }
-    }
-}
-
-std::ostream& operator<<(std::ostream& os, const Node& node) {
-    std::unordered_set<const Node*> printedNodes;
-    printNode(os, node, 0, printedNodes);
-    return os;
-}
 
 std::string Node::toJson() const {
     std::ostringstream os;
@@ -140,4 +99,131 @@ void Node::saveToJsonFile(const std::string& filename) const {
     }
     file << toJson();
     file.close();
+}
+
+Node* buildExpressionTree(const std::string& expression) {
+    std::stack<Node*> nodes;
+    std::stack<char> operators;
+
+    auto applyOperator = [&]() {
+        if (operators.empty() || nodes.size() < 2) {
+            throw std::logic_error("Invalid expression.");
+        }
+
+        char op = operators.top();
+        operators.pop();
+
+        Node* right = nodes.top(); nodes.pop();
+        Node* left = nodes.top(); nodes.pop();
+
+        Node* parent = new Node(OPERATOR, op);
+        parent->setLeft(left);
+        parent->setRight(right);
+        nodes.push(parent);
+    };
+
+    auto precedence = [](char op) {
+        if (op == '+' || op == '-') return 1;
+        if (op == '*' || op == '/') return 2;
+        return 0;
+    };
+
+    for (size_t i = 0; i < expression.size(); i++) {
+        char ch = expression[i];
+
+        if (std::isspace(ch)) {
+            continue;
+        } else if (std::isdigit(ch)) {
+            int value = 0;
+            while (i < expression.size() && std::isdigit(expression[i])) {
+                value = value * 10 + (expression[i] - '0');
+                i++;
+            }
+            i--;
+            nodes.push(new Node(NUMBER, value));
+        } else if (ch == '+' || ch == '-' || ch == '*' || ch == '/') {
+            while (!operators.empty() && precedence(operators.top()) >= precedence(ch)) {
+                applyOperator();
+            }
+            operators.push(ch);
+        } else {
+            throw std::invalid_argument(std::string("Invalid character in expression: ") + ch);
+        }
+    }
+
+    while (!operators.empty()) {
+        applyOperator();
+    }
+
+    if (nodes.size() != 1) {
+        throw std::logic_error("Invalid expression structure.");
+    }
+
+    return nodes.top();
+}
+
+void drawNode(std::vector<unsigned char>& image, int width, int x, int y, const std::string& label) {
+    int radius = 20;
+    for (int dy = -radius; dy <= radius; dy++) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            if (dx * dx + dy * dy <= radius * radius) {
+                int px = x + dx;
+                int py = y + dy;
+                if (px >= 0 && px < width && py >= 0 && py < width) {
+                    int idx = 4 * (py * width + px);
+                    image[idx] = 0;     
+                    image[idx + 1] = 0;  
+                    image[idx + 2] = 255; 
+                    image[idx + 3] = 255; 
+                }
+            }
+        }
+    }
+
+    // Render the label (actual text rendering would require more complex logic)
+    // TODO: Render text
+}
+
+void drawLine(std::vector<unsigned char>& image, int width, int x1, int y1, int x2, int y2) {
+    int dx = abs(x2 - x1), sx = x1 < x2 ? 1 : -1;
+    int dy = -abs(y2 - y1), sy = y1 < y2 ? 1 : -1;
+    int err = dx + dy, e2;
+
+    while (true) {
+        if (x1 >= 0 && x1 < width && y1 >= 0 && y1 < width) {
+            int idx = 4 * (y1 * width + x1);
+            image[idx] = 0;  
+            image[idx + 1] = 255;
+            image[idx + 2] = 0;
+            image[idx + 3] = 255;
+        }
+
+        if (x1 == x2 && y1 == y2) break;
+        e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x1 += sx; }
+        if (e2 <= dx) { err += dx; y1 += sy; }
+    }
+}
+
+void Node::renderHelper(std::vector<unsigned char>& image, int width, int x, int y, int offsetX, int offsetY) const {
+    drawNode(image, width, x, y, (type == NUMBER) ? std::to_string(value) : std::string(1, op));
+
+    if (left) {
+        drawLine(image, width, x, y, x - offsetX, y + offsetY);
+        left->renderHelper(image, width, x - offsetX, y + offsetY, offsetX / 2, offsetY);
+    }
+    if (right) {
+        drawLine(image, width, x, y, x + offsetX, y + offsetY);
+        right->renderHelper(image, width, x + offsetX, y + offsetY, offsetX / 2, offsetY);
+    }
+}
+
+void Node::renderTree(const std::string& filename, int width, int height) const {
+    std::vector<unsigned char> image(width * height * 4, 255);
+    renderHelper(image, width, width / 2, 50, width / 4, 100); 
+
+    unsigned error = lodepng::encode(filename, image, width, height);
+    if (error) {
+        throw std::runtime_error("PNG encoding error: " + std::string(lodepng_error_text(error)));
+    }
 }

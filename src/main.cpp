@@ -2,20 +2,16 @@
 #include <iostream>
 
 int main() {
-    Node opNode(OPERATOR, '+');
-    Node leftChild(NUMBER, 3);
-    Node rightChild(OPERATOR, '+');
-    Node rightrightChild(NUMBER, 523);
-    Node rightleftChild(NUMBER, 614);
-
-    opNode.setLeft(&leftChild);
-    opNode.setRight(&rightChild);
-    rightChild.setLeft(&rightleftChild);
-    rightChild.setRight(&rightrightChild);
-
-    std::cout << opNode.toJson() << std::endl;
-
-    opNode.saveToJsonFile("output.json");
-
+     std::string expression = "2 + 10 + 52 *531";
+    try {
+        Node* root = buildExpressionTree(expression);
+        root->saveToJsonFile("expression.json");
+        delete root;
+        Node* tree = buildExpressionTree("3 + 5 * 2 - 8");
+        tree->saveToJsonFile("expression.json");
+        tree->renderTree("expression_tree.png");
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
     return 0;
 }

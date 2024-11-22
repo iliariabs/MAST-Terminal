@@ -5,6 +5,12 @@
 #include <unordered_set>
 #include <sstream>
 #include <fstream>
+#include <stack>
+#include <string>
+#include <vector>
+#include <cctype>
+#include <stdexcept>
+#include "libs/lodepng.h"
 
 enum NodeType { NUMBER, OPERATOR };
 
@@ -39,6 +45,8 @@ public:
 
     void saveToJsonFile(const std::string& filename) const;
 
+    void renderTree(const std::string& filename, int width = 1024, int height = 768) const;
+    void renderHelper(std::vector<unsigned char>& image, int width, int x, int y, int offsetX, int offsetY) const;
 private:
     NodeType type;
     union {
@@ -49,5 +57,6 @@ private:
     Node* right;
 };
 
+Node* buildExpressionTree(const std::string& expression);
 
 #endif
